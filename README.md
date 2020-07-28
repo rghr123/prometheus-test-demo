@@ -1,3 +1,3 @@
-接口访问路径
+# Metrics URL 路径
 
 http://localhost:8998/actuator/prometheus
