@@ -1,17 +1,24 @@
-FROM openjdk:8-jre-alpine
+# 使用官方的 Java 开发镜像作为基础镜像
+FROM maven:3.8.1-openjdk-17-slim AS build
 
-RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime
-RUN echo 'Asia/Shanghai' >/etc/timezone
-
-ENV JAVA_OPTS ''
-
+# 设置工作目录
 WORKDIR /app
-ADD target/prometheus-test-demo-0.0.1-SNAPSHOT.jar .
 
+# 将 pom.xml 和 src 目录复制到 Docker 镜像中
+COPY pom.xml .
+COPY src ./src
 
-ENTRYPOINT ["sh", "-c", "set -e && java -XX:+PrintFlagsFinal \
-                                           -XX:+HeapDumpOnOutOfMemoryError \
-                                           -XX:HeapDumpPath=/heapdump/heapdump.hprof \
-                                           -XX:+UnlockExperimentalVMOptions \
-                                           -XX:+UseCGroupMemoryLimitForHeap \
-                                           $JAVA_OPTS -jar prometheus-test-demo-0.0.1-SNAPSHOT.jar"]
+# 使用 Maven 构建应用
+RUN mvn -f pom.xml clean package
+
+# 使用官方的 Java 运行时镜像作为基础镜像
+FROM openjdk:17-slim
+
+# 将构建的 JAR 文件复制到 Docker 镜像中
+COPY --from=build /app/target/*.jar app.jar
+
+# 暴露端口
+EXPOSE 8080
+
+# 设置启动命令
+ENTRYPOINT ["java","-jar","/app.jar"]
